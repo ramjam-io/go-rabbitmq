@@ -18,6 +18,7 @@ type Consumer struct {
 type ConsumerOptions struct {
 	Logging bool
 	Logger  Logger
+	ConnectedHandler OnChannelConnected
 }
 
 // Delivery captures the fields for a previously delivered message resident in
@@ -83,6 +84,7 @@ func getDefaultConsumeOptions() ConsumeOptions {
 		ConsumerNoWait:    false,
 		ConsumerNoLocal:   false,
 		ConsumerArgs:      nil,
+		ConnectedHandler: nil,
 	}
 }
 
@@ -105,6 +107,7 @@ type ConsumeOptions struct {
 	ConsumerNoWait    bool
 	ConsumerNoLocal   bool
 	ConsumerArgs      Table
+	ConnectedHandler  OnChannelConnected
 }
 
 // WithConsumeOptionsQueueDurable sets the queue to durable, which means it won't
@@ -206,6 +209,17 @@ func WithConsumeOptionsConsumerNoWait(options *ConsumeOptions) {
 	options.ConsumerNoWait = true
 }
 
+//func WithConsumeOptionsOnConnectedHandler (handler OnChannelConnected) func(*ConsumeOptions) {
+//	return func(options *ConsumeOptions) {
+//		options.ConnectedHandler = handler
+//	}
+//}
+
+func WithConsumerOptionsOnConnectedHandler(handler OnChannelConnected) func(options *ConsumerOptions) {
+	return func(options *ConsumerOptions) {
+		options.ConnectedHandler = handler
+	}
+}
 // StartConsuming starts n goroutines where n="ConsumeOptions.QosOptions.Concurrency".
 // Each goroutine spawns a handler that consumes off of the qiven queue which binds to the routing key(s).
 // The provided handler is called once for each message. If the provided queue doesn't exist, it

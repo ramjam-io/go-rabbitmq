@@ -14,7 +14,15 @@ type channelManager struct {
 	channel             *amqp.Channel
 	channelMux          *sync.RWMutex
 	notifyCancelOrClose chan error
+	OnChannelConnected	OnChannelConnected
+	//OnChannelClose		OnChannelClosed
+	//OnChannelCancel		string
 }
+
+type OnChannelConnected func(connected bool) (bool, error)
+//type OnChannelClosed func(channel *amqp.Channel) (amqp.Channel, error)
+//type OnChannelCancel func(channel *amqp.Channel) (amqp.Channel, error)
+
 
 func newChannelManager(url string, log Logger) (*channelManager, error) {
 	ch, err := getNewChannel(url)
@@ -27,12 +35,15 @@ func newChannelManager(url string, log Logger) (*channelManager, error) {
 		url:                 url,
 		channel:             ch,
 		channelMux:          &sync.RWMutex{},
+		OnChannelConnected: func(connected bool) (bool, error) {
+			log.Printf("Channel line 39, state: %s ", connected)
+			return connected, nil
+		},
 		notifyCancelOrClose: make(chan error),
 	}
 	go chManager.startNotifyCancelOrClosed()
 	return &chManager, nil
 }
-
 func getNewChannel(url string) (*amqp.Channel, error) {
 	amqpConn, err := amqp.Dial(url)
 	if err != nil {
@@ -52,6 +63,14 @@ func getNewChannel(url string) (*amqp.Channel, error) {
 func (chManager *channelManager) startNotifyCancelOrClosed() {
 	notifyCloseChan := make(chan *amqp.Error)
 	notifyCloseChan = chManager.channel.NotifyClose(notifyCloseChan)
+	if chManager.OnChannelConnected != nil {
+		chManager.logger.Printf("Running the function defined")
+		_, err := chManager.OnChannelConnected(true)
+		if err != nil {
+			chManager.logger.Printf("Error when calling OnChannelConnected")
+			chManager.logger.Printf(err.Error())
+		}
+	}
 	notifyCancelChan := make(chan string)
 	notifyCancelChan = chManager.channel.NotifyCancel(notifyCancelChan)
 	select {
