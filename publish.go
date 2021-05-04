@@ -40,6 +40,16 @@ type PublishOptions struct {
 	ContentType string
 	// Transient or Persistent
 	DeliveryMode uint8
+	// Expiry
+	TTL		string
+
+}
+
+// WithPublishOptionsTTL returns a function that sets the expiry of a message.
+func WithPublishOptionsTTL (ttl string) func(options *PublishOptions) {
+	return func(options *PublishOptions) {
+		options.TTL = ttl
+	}
 }
 
 // WithPublishOptionsExchange returns a function that sets the exchange to publish to
@@ -176,16 +186,21 @@ func (publisher *Publisher) Publish(
 	}
 
 	for _, routingKey := range routingKeys {
+		var letter = amqp.Publishing{}
+		letter.ContentType = options.ContentType
+		letter.Body = data
+		letter.DeliveryMode = options.DeliveryMode
+		if options.TTL != "" {
+			letter.Expiration = options.TTL
+		}
+
 		err := publisher.chManager.channel.Publish(
 			options.Exchange,
 			routingKey,
 			options.Mandatory,
 			options.Immediate,
-			amqp.Publishing{
-				ContentType:  options.ContentType,
-				Body:         data,
-				DeliveryMode: options.DeliveryMode,
-			})
+			letter,
+			)
 		if err != nil {
 			return err
 		}
